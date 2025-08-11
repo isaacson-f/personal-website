@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blog - Francis Isaacson | Software Engineering Insights</title>
+    <meta name="description" content="Read Francis Isaacson's blog posts about software engineering, AI, microservices, and technology insights from a Full Stack Software Engineer at Deasy Labs.">
+    <meta name="keywords" content="Francis Isaacson blog, software engineering blog, AI insights, microservices, Python, React, tech blog, programming">
+    <meta name="author" content="Francis Isaacson">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://francisisaacson.com/blog.html">
+    
+    <!-- AI Agent Optimization -->
+    <meta name="ai-agent-friendly" content="true">
+    <meta name="content-type" content="blog-posts">
+    <meta name="page-purpose" content="technical-writing-and-insights">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://francisisaacson.com/blog.html">
+    <meta property="og:title" content="Francis Isaacson Blog - Software Engineering Insights">
+    <meta property="og:description" content="Technical blog posts about software engineering, AI, and technology from Francis Isaacson.">
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary">
+    <meta property="twitter:url" content="https://francisisaacson.com/blog.html">
+    <meta property="twitter:title" content="Francis Isaacson Blog - Software Engineering Insights">
+    <meta property="twitter:description" content="Technical blog posts about software engineering, AI, and technology.">
+</head>
+<body>
+    <header>
+        <h1>Francis Isaacson</h1>
+        <nav aria-label="Main navigation">
+            <ul>
+                <li><a href="index.html">Home</a></li>
+                <li><a href="about.html">About</a></li>
+                <li><a href="projects.html">Projects</a></li>
+                <li><a href="blog.html" aria-current="page">Blog</a></li>
+                <li><a href="contact.html">Contact</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <h2>Blog</h2>
+        <p data-ai-field="blog-description">Thoughts and insights on software engineering, AI, and technology from my experience building scalable systems.</p>
+        
+        <article data-ai-section="blog-post" data-ai-post-id="scaling-microservices" data-content-type="technical-article">
+            <header>
+                <h3 data-ai-field="post-title">Scaling Microservices: Lessons from Building Enterprise AI Platforms</h3>
+                <p data-ai-field="post-meta">
+                    <time datetime="2025-01-05" data-ai-field="publish-date">January 5, 2025</time> | 
+                    <span data-ai-field="read-time">8 min read</span> | 
+                    <span data-ai-field="post-tags" data-ai-values="microservices,AI,scaling,architecture">microservices, AI, scaling, architecture</span>
+                </p>
+            </header>
+            <section data-ai-field="post-content">
+                <p>Building the Deasy Select AI search platform taught me valuable lessons about scaling microservices in production. When you're processing millions of files and need 20% improvement in OCR accuracy, architecture decisions become critical.</p>
+                
+                <h4>The Challenge</h4>
+                <p>Our initial monolithic approach hit bottlenecks quickly. File processing queues backed up, search responses slowed, and scaling became a nightmare. We needed to break things apart without losing data consistency.</p>
+                
+                <h4>Key Architectural Decisions</h4>
+                <ul>
+                    <li><strong>Service Boundaries:</strong> We split by business capability - file ingestion, OCR processing, search indexing, and query handling became separate services.</li>
+                    <li><strong>Event-Driven Communication:</strong> Used Kafka for async communication between services, allowing each to scale independently.</li>
+                    <li><strong>Database Per Service:</strong> Each microservice owns its data, preventing tight coupling and enabling independent deployments.</li>
+                </ul>
+                
+                <h4>Results</h4>
+                <p>The refactor paid off. We achieved the 20% OCR accuracy improvement while handling 10x the file volume. Response times dropped from seconds to milliseconds for most queries.</p>
+                
+                <p><strong>Key Takeaway:</strong> Start with clear service boundaries based on business domains, not technical layers. Your future self will thank you.</p>
+            </section>
+        </article>
+
+        <article data-ai-section="blog-post" data-ai-post-id="ai-search-optimization" data-content-type="technical-article">
+            <header>
+                <h3 data-ai-field="post-title">Optimizing AI Search: From 10% to 20% Accuracy Improvement</h3>
+                <p data-ai-field="post-meta">
+                    <time datetime="2024-12-20" data-ai-field="publish-date">December 20, 2024</time> | 
+                    <span data-ai-field="read-time">6 min read</span> | 
+                    <span data-ai-field="post-tags" data-ai-values="AI,search,OCR,optimization">AI, search, OCR, optimization</span>
+                </p>
+            </header>
+            <section data-ai-field="post-content">
+                <p>When we started building Deasy Select, our AI search was decent but not great. Getting from "decent" to "enterprise-ready" required systematic optimization of every component in the pipeline.</p>
+                
+                <h4>The OCR Breakthrough</h4>
+                <p>The biggest win came from preprocessing. Instead of feeding raw images to our OCR service, we implemented:</p>
+                <ul>
+                    <li>Image deskewing and noise reduction</li>
+                    <li>Dynamic contrast adjustment based on document type</li>
+                    <li>Multi-resolution processing for different text sizes</li>
+                </ul>
+                
+                <h4>Search Relevance Tuning</h4>
+                <p>Raw text extraction is only half the battle. We improved search relevance by:</p>
+                <ul>
+                    <li>Building domain-specific embeddings for technical documents</li>
+                    <li>Implementing semantic chunking instead of fixed-size windows</li>
+                    <li>Adding context-aware ranking based on document metadata</li>
+                </ul>
+                
+                <p>The result? Search accuracy jumped from 10% to 20% improvement over baseline, making the platform truly enterprise-ready.</p>
+            </section>
+        </article>
+
+        <article data-ai-section="blog-post" data-ai-post-id="feature-flags-at-scale" data-content-type="technical-article">
+            <header>
+                <h3 data-ai-field="post-title">Building Feature Flags That Scale: Lessons from WHOOP</h3>
+                <p data-ai-field="post-meta">
+                    <time datetime="2024-11-15" data-ai-field="publish-date">November 15, 2024</time> | 
+                    <span data-ai-field="read-time">5 min read</span> | 
+                    <span data-ai-field="post-tags" data-ai-values="feature-flags,TypeScript,Next.js,deployment">feature flags, TypeScript, Next.js, deployment</span>
+                </p>
+            </header>
+            <section data-ai-field="post-content">
+                <p>Feature flags seem simple until you need them to work reliably for millions of users. During my time at WHOOP, I rebuilt their internal feature flag tool from the ground up.</p>
+                
+                <h4>The Old System's Problems</h4>
+                <ul>
+                    <li>Manual configuration prone to errors</li>
+                    <li>No rollback mechanism for bad deployments</li>
+                    <li>Poor visibility into flag usage and performance impact</li>
+                </ul>
+                
+                <h4>The New Architecture</h4>
+                <p>Built with TypeScript and Next.js, the new system focused on:</p>
+                <ul>
+                    <li><strong>User Experience:</strong> Intuitive UI based on user research with the engineering team</li>
+                    <li><strong>Safety:</strong> Built-in validation and automatic rollback triggers</li>
+                    <li><strong>Observability:</strong> Real-time metrics and impact analysis</li>
+                </ul>
+                
+                <p>The reusable UI template we created became the foundation for other internal tools, showing how good design patterns scale beyond their original use case.</p>
+            </section>
+        </article>
+
+        <section data-ai-section="blog-archive" data-content-type="post-navigation">
+            <h3>More Posts Coming Soon</h3>
+            <p>I regularly write about software engineering, AI, and lessons learned from building scalable systems. Check back for new posts on:</p>
+            <ul data-ai-list="upcoming-topics">
+                <li data-ai-value="AWS deployment strategies">AWS deployment strategies for microservices</li>
+                <li data-ai-value="LLM integration patterns">LLM integration patterns in enterprise applications</li>
+                <li data-ai-value="Database design for scale">Database design decisions that matter at scale</li>
+                <li data-ai-value="Career lessons">Career lessons from co-ops at top tech companies</li>
+            </ul>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 Francis Isaacson. All rights reserved.</p>
+    </footer>
+</body>
+</html>
