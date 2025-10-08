@@ -1,4 +1,4 @@
-const sqlite3 = require('sqlite3').verbose();
+const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
 const { rateLimit, validateRequest } = require('../utils/rateLimit');
@@ -12,26 +12,25 @@ function initDB() {
     fs.mkdirSync(dataDir, { recursive: true });
   }
 
-  const db = new sqlite3.Database(DATABASE_PATH);
+  const db = new Database(DATABASE_PATH);
   
-  db.serialize(() => {
-    db.run(`
-      CREATE TABLE IF NOT EXISTS events (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        type TEXT NOT NULL,
-        url TEXT,
-        title TEXT,
-        referrer TEXT,
-        event_name TEXT,
-        properties TEXT,
-        user_agent TEXT,
-        ip_address TEXT,
-        session_id TEXT,
-        timestamp TEXT NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-  });
+  // Create table if not exists
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      type TEXT NOT NULL,
+      url TEXT,
+      title TEXT,
+      referrer TEXT,
+      event_name TEXT,
+      properties TEXT,
+      user_agent TEXT,
+      ip_address TEXT,
+      session_id TEXT,
+      timestamp TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
   
   return db;
 }
@@ -85,8 +84,6 @@ module.exports = async (req, res) => {
       sanitizeInput(req.headers['x-session-id']) || null,
       new Date().toISOString()
     );
-    
-    stmt.finalize();
     db.close();
     
     res.json({ success: true });

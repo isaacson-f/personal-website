@@ -1,4 +1,4 @@
-const sqlite3 = require('sqlite3').verbose();
+const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
 const { rateLimit } = require('../utils/rateLimit');
@@ -11,26 +11,25 @@ function initDB() {
     fs.mkdirSync(dataDir, { recursive: true });
   }
 
-  const db = new sqlite3.Database(DATABASE_PATH);
+  const db = new Database(DATABASE_PATH);
   
-  db.serialize(() => {
-    db.run(`
-      CREATE TABLE IF NOT EXISTS events (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        type TEXT NOT NULL,
-        url TEXT,
-        title TEXT,
-        referrer TEXT,
-        event_name TEXT,
-        properties TEXT,
-        user_agent TEXT,
-        ip_address TEXT,
-        session_id TEXT,
-        timestamp TEXT NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-  });
+  // Create table if not exists
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      type TEXT NOT NULL,
+      url TEXT,
+      title TEXT,
+      referrer TEXT,
+      event_name TEXT,
+      properties TEXT,
+      user_agent TEXT,
+      ip_address TEXT,
+      session_id TEXT,
+      timestamp TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
   
   return db;
 }
@@ -61,34 +60,28 @@ module.exports = async (req, res) => {
     today.setHours(0, 0, 0, 0);
     const todayISO = today.toISOString();
     
-    return new Promise((resolve, reject) => {
-      db.get("SELECT COUNT(*) as count FROM events WHERE type = 'pageview'", (err, totalResult) => {
-        if (err) return reject(err);
-        
-        db.get("SELECT COUNT(*) as count FROM events WHERE type = 'pageview' AND timestamp >= ?", [todayISO], (err, todayResult) => {
-          if (err) return reject(err);
-          
-          db.all(`
-            SELECT url, COUNT(*) as views 
-            FROM events 
-            WHERE type = 'pageview' AND url IS NOT NULL
-            GROUP BY url 
-            ORDER BY views DESC 
-            LIMIT 10
-          `, (err, topPages) => {
-            if (err) return reject(err);
-            
-            db.close();
-            
-            res.json({
-              totalViews: totalResult.count,
-              todayViews: todayResult.count,
-              topPages: topPages.map(p => ({ url: p.url, views: p.views }))
-            });
-            resolve();
-          });
-        });
-      });
+    // Get total page views
+    const totalResult = db.prepare("SELECT COUNT(*) as count FROM events WHERE type = 'pageview'").get();
+    
+    // Get today's page views
+    const todayResult = db.prepare("SELECT COUNT(*) as count FROM events WHERE type = 'pageview' AND timestamp >= ?").get(todayISO);
+    
+    // Get top pages
+    const topPages = db.prepare(`
+      SELECT url, COUNT(*) as views 
+      FROM events 
+      WHERE type = 'pageview' AND url IS NOT NULL
+      GROUP BY url 
+      ORDER BY views DESC 
+      LIMIT 10
+    `).all();
+    
+    db.close();
+    
+    res.json({
+      totalViews: totalResult.count,
+      todayViews: todayResult.count,
+      topPages: topPages.map(p => ({ url: p.url, views: p.views }))
     });
     
   } catch (error) {
