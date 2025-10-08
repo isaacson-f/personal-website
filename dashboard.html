@@ -37,7 +37,8 @@
     <script>
         const ANALYTICS_URL = window.location.hostname === 'localhost' 
             ? 'http://localhost:3000' 
-            : window.location.origin + '/api'; // Use current domain + /api for Vercel
+            : "https://personal-website-eight-kappa-46.vercel.app/api"; 
+            // Use current domain + /api for Vercel
         
         async function loadAnalytics() {
             try {
