@@ -4,5 +4,55 @@
     "api/**/*.js": {
       "runtime": "@vercel/node@18"
     }
-  }
+  },
+  "routes": [
+    {
+      "src": "/api/track/pageview",
+      "dest": "/api/track/pageview.js",
+      "methods": ["POST", "OPTIONS"]
+    },
+    {
+      "src": "/api/track/event",
+      "dest": "/api/track/event.js",
+      "methods": ["POST", "OPTIONS"]
+    },
+    {
+      "src": "/api/analytics/summary",
+      "dest": "/api/analytics/summary.js",
+      "methods": ["GET", "OPTIONS"]
+    },
+    {
+      "src": "/api/analytics",
+      "dest": "/api/analytics.js",
+      "methods": ["GET", "OPTIONS"]
+    },
+    {
+      "src": "/api/test",
+      "dest": "/api/test.js",
+      "methods": ["GET", "OPTIONS"]
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/$1"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, POST, OPTIONS"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "Content-Type, X-Session-ID"
+        }
+      ]
+    }
+  ]
 }

@@ -3,12 +3,12 @@
   // Auto-detect the analytics URL based on environment
   const ANALYTICS_URL = window.location.hostname === 'localhost' 
     ? 'http://localhost:3000' 
-    : 'https://personal-website-eight-kappa-46.vercel.app/api'; // Update this with your Vercel project URL
+    : `${window.location.protocol}//${window.location.hostname}/api`;
   
   // Generate simple session ID
   let sessionId = sessionStorage.getItem('analytics_session');
   if (!sessionId) {
-    sessionId = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+    sessionId = Date.now() + '-' + Math.random().toString(36).substring(2, 11);
     sessionStorage.setItem('analytics_session', sessionId);
   }
 
