@@ -1,73 +1,139 @@
+require('dotenv').config();
 const express = require('express');
+const sqlite3 = require('sqlite3').verbose();
 const cors = require('cors');
 const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
-require('dotenv').config();
+const path = require('path');
+const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const DATABASE_PATH = process.env.DATABASE_PATH || './data/analytics.db';
 
-// Security middleware
-app.use(helmet());
-app.use(cors({
-  origin: process.env.CORS_ORIGIN || '*',
-  credentials: true
-}));
-
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100,
-  message: 'Too many requests from this IP, please try again later.'
-});
-app.use(limiter);
-
-// Body parsing middleware
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
-
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.status(200).json({ 
-    status: 'OK', 
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development'
-  });
-});
-
-// Import routes
-const sessionRoutes = require('./routes/session');
-const trackingRoutes = require('./routes/tracking');
-
-// API routes
-app.use('/api/session', sessionRoutes);
-app.use('/api/track', trackingRoutes);
-
-// Catch-all for unimplemented API routes
-app.use('/api', (req, res) => {
-  res.status(404).json({ error: 'API endpoint not found' });
-});
-
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ 
-    error: 'Something went wrong!',
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
-  });
-});
-
-// 404 handler
-app.use('*', (req, res) => {
-  res.status(404).json({ error: 'Route not found' });
-});
-
-// Only start the server if not in test mode
-if (process.env.NODE_ENV !== 'test') {
-  app.listen(PORT, () => {
-    console.log(`Analytics API server running on port ${PORT}`);
-    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-  });
+// Ensure data directory exists
+const dataDir = path.dirname(DATABASE_PATH);
+if (!fs.existsSync(dataDir)) {
+  fs.mkdirSync(dataDir, { recursive: true });
 }
 
-module.exports = app;
+// Initialize SQLite database
+const db = new sqlite3.Database(DATABASE_PATH, (err) => {
+  if (err) {
+    console.error('Error opening database:', err);
+    process.exit(1);
+  }
+  console.log('Connected to SQLite database');
+});
+
+// Middleware
+app.use(helmet());
+app.use(cors({
+  origin: process.env.CORS_ORIGIN || '*'
+}));
+app.use(express.json({ limit: '10mb' }));
+
+// Track page view
+app.post('/track/pageview', (req, res) => {
+  try {
+    const { url, title, referrer, userAgent } = req.body;
+    
+    const stmt = db.prepare(`
+      INSERT INTO events (type, url, title, referrer, user_agent, ip_address, session_id, timestamp)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    
+    stmt.run(
+      'pageview',
+      url,
+      title,
+      referrer,
+      userAgent,
+      req.ip || req.connection.remoteAddress,
+      req.headers['x-session-id'] || null,
+      new Date().toISOString()
+    );
+    
+    stmt.finalize();
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error tracking pageview:', error);
+    res.status(500).json({ error: 'Failed to track event' });
+  }
+});
+
+// Track custom event
+app.post('/track/event', (req, res) => {
+  try {
+    const { name, properties } = req.body;
+    
+    const stmt = db.prepare(`
+      INSERT INTO events (type, event_name, properties, user_agent, ip_address, session_id, timestamp)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `);
+    
+    stmt.run(
+      'custom',
+      name,
+      JSON.stringify(properties || {}),
+      req.headers['user-agent'],
+      req.ip || req.connection.remoteAddress,
+      req.headers['x-session-id'] || null,
+      new Date().toISOString()
+    );
+    
+    stmt.finalize();
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error tracking event:', error);
+    res.status(500).json({ error: 'Failed to track event' });
+  }
+});
+
+// Get basic analytics
+app.get('/analytics/summary', (req, res) => {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayISO = today.toISOString();
+    
+    // Get total page views
+    db.get("SELECT COUNT(*) as count FROM events WHERE type = 'pageview'", (err, totalResult) => {
+      if (err) throw err;
+      
+      // Get today's page views
+      db.get("SELECT COUNT(*) as count FROM events WHERE type = 'pageview' AND timestamp >= ?", [todayISO], (err, todayResult) => {
+        if (err) throw err;
+        
+        // Get top pages
+        db.all(`
+          SELECT url, COUNT(*) as views 
+          FROM events 
+          WHERE type = 'pageview' AND url IS NOT NULL
+          GROUP BY url 
+          ORDER BY views DESC 
+          LIMIT 10
+        `, (err, topPages) => {
+          if (err) throw err;
+          
+          res.json({
+            totalViews: totalResult.count,
+            todayViews: todayResult.count,
+            topPages: topPages.map(p => ({ url: p.url, views: p.views }))
+          });
+        });
+      });
+    });
+  } catch (error) {
+    console.error('Error getting analytics:', error);
+    res.status(500).json({ error: 'Failed to get analytics' });
+  }
+});
+
+// Health check
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date() });
+});
+
+app.listen(PORT, () => {
+  console.log(`Analytics server running on port ${PORT}`);
+});

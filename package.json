@@ -1,0 +1,8 @@
+{
+  "name": "analytics-serverless",
+  "version": "1.0.0",
+  "description": "Serverless analytics tracking",
+  "dependencies": {
+    "sqlite3": "^5.1.6"
+  }
+}

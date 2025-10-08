@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics Dashboard</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .stat { background: #f5f5f5; padding: 20px; margin: 10px 0; border-radius: 5px; }
+        .stat h3 { margin: 0 0 10px 0; }
+        .stat .number { font-size: 2em; font-weight: bold; color: #333; }
+        .pages { margin-top: 20px; }
+        .page-item { padding: 10px; border-bottom: 1px solid #eee; }
+        .refresh-btn { background: #007cba; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Analytics Dashboard</h1>
+    
+    <button class="refresh-btn" onclick="loadAnalytics()">Refresh Data</button>
+    
+    <div class="stat">
+        <h3>Total Page Views</h3>
+        <div class="number" id="totalViews">-</div>
+    </div>
+    
+    <div class="stat">
+        <h3>Today's Page Views</h3>
+        <div class="number" id="todayViews">-</div>
+    </div>
+    
+    <div class="stat">
+        <h3>Top Pages</h3>
+        <div id="topPages" class="pages">Loading...</div>
+    </div>
+
+    <script>
+        const ANALYTICS_URL = window.location.hostname === 'localhost' 
+            ? 'http://localhost:3000' 
+            : 'https://personal-website-eight-kappa-46.vercel.app/'; // Update with your Vercel project URL
+        
+        async function loadAnalytics() {
+            try {
+                const response = await fetch(`${ANALYTICS_URL}/analytics/summary`);
+                const data = await response.json();
+                
+                document.getElementById('totalViews').textContent = data.totalViews;
+                document.getElementById('todayViews').textContent = data.todayViews;
+                
+                const topPagesDiv = document.getElementById('topPages');
+                if (data.topPages.length === 0) {
+                    topPagesDiv.innerHTML = '<div class="page-item">No page views yet</div>';
+                } else {
+                    topPagesDiv.innerHTML = data.topPages
+                        .map(page => `<div class="page-item">${page.url} - ${page.views} views</div>`)
+                        .join('');
+                }
+            } catch (error) {
+                console.error('Error loading analytics:', error);
+                document.getElementById('topPages').innerHTML = '<div class="page-item">Error loading data</div>';
+            }
+        }
+        
+        // Load data on page load
+        loadAnalytics();
+        
+        // Auto-refresh every 30 seconds
+        setInterval(loadAnalytics, 30000);
+    </script>
+</body>
+</html>
