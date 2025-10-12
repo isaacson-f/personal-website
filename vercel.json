@@ -5,30 +5,26 @@
       "runtime": "@vercel/node@18"
     }
   },
-  "routes": [
+  "rewrites": [
     {
-      "src": "/",
-      "dest": "/index.html"
+      "source": "/about",
+      "destination": "/about.html"
     },
     {
-      "src": "/about",
-      "dest": "/about.html"
+      "source": "/projects",
+      "destination": "/projects.html"
     },
     {
-      "src": "/projects",
-      "dest": "/projects.html"
+      "source": "/blog",
+      "destination": "/blog.html"
     },
     {
-      "src": "/blog",
-      "dest": "/blog.html"
+      "source": "/contact",
+      "destination": "/contact.html"
     },
     {
-      "src": "/contact",
-      "dest": "/contact.html"
-    },
-    {
-      "src": "/dashboard",
-      "dest": "/dashboard.html"
+      "source": "/dashboard",
+      "destination": "/dashboard.html"
     }
   ],
   "headers": [
@@ -67,5 +63,7 @@
         }
       ]
     }
-  ]
+  ],
+  "cleanUrls": true,
+  "trailingSlash": false
 }
