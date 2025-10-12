@@ -8,7 +8,12 @@ class BlogManager {
     async loadPosts() {
         try {
             // Load post list from posts.json
-            const response = await fetch('/blog-posts/posts.json');
+            const response = await fetch('blog-posts/posts.json');
+            
+            if (!response.ok) {
+                throw new Error(`Failed to fetch posts.json: ${response.status} ${response.statusText}`);
+            }
+            
             const postList = await response.json();
             
             // Load each post
@@ -25,7 +30,12 @@ class BlogManager {
 
     async loadPost(filename) {
         try {
-            const response = await fetch(`/blog-posts/${filename}`);
+            const response = await fetch(`blog-posts/${filename}`);
+            
+            if (!response.ok) {
+                throw new Error(`Failed to fetch ${filename}: ${response.status} ${response.statusText}`);
+            }
+            
             const markdown = await response.text();
             
             const post = this.parseMarkdown(markdown);
