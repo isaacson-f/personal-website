@@ -3,6 +3,6 @@
   "version": "1.0.0",
   "description": "Serverless analytics tracking",
   "dependencies": {
-    "@vercel/kv": "^1.0.1"
+    "@supabase/supabase-js": "^2.38.0"
   }
 }

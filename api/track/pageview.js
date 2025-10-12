@@ -1,6 +1,12 @@
-const { kv } = require('@vercel/kv');
+const { createClient } = require('@supabase/supabase-js');
 const { rateLimit, validateRequest } = require('../utils/rateLimit');
 const { addSecurityHeaders, sanitizeInput, isValidUrl } = require('../utils/security');
+
+// Initialize Supabase client
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_ANON_KEY
+);
 
 module.exports = async (req, res) => {
   addSecurityHeaders(res);
@@ -35,26 +41,24 @@ module.exports = async (req, res) => {
       return res.status(400).json({ error: 'Invalid URL' });
     }
     
-    // Create event object
-    const event = {
-      type: 'pageview',
-      url: sanitizeInput(url),
-      title: sanitizeInput(title),
-      referrer: sanitizeInput(referrer),
-      userAgent: sanitizeInput(userAgent),
-      ipAddress: req.headers['x-forwarded-for'] || req.connection.remoteAddress,
-      sessionId: sanitizeInput(req.headers['x-session-id']) || null,
-      timestamp: new Date().toISOString()
-    };
+    // Insert into Supabase
+    const { error } = await supabase
+      .from('analytics_events')
+      .insert({
+        type: 'pageview',
+        url: sanitizeInput(url),
+        title: sanitizeInput(title),
+        referrer: sanitizeInput(referrer),
+        user_agent: sanitizeInput(userAgent),
+        ip_address: req.headers['x-forwarded-for'] || req.connection.remoteAddress,
+        session_id: sanitizeInput(req.headers['x-session-id']) || null,
+        timestamp: new Date().toISOString()
+      });
     
-    // Store in KV with unique key
-    const eventKey = `event:${Date.now()}:${Math.random().toString(36).substring(2)}`;
-    await kv.set(eventKey, event);
-    
-    // Increment counters
-    await kv.incr('stats:total_pageviews');
-    const today = new Date().toISOString().split('T')[0];
-    await kv.incr(`stats:daily:${today}`);
+    if (error) {
+      console.error('Supabase error:', error);
+      return res.status(500).json({ error: 'Failed to track event' });
+    }
     
     res.json({ success: true });
   } catch (error) {

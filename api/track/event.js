@@ -1,5 +1,11 @@
-const { kv } = require('@vercel/kv');
+const { createClient } = require('@supabase/supabase-js');
 const { rateLimit, validateRequest } = require('../utils/rateLimit');
+
+// Initialize Supabase client
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_ANON_KEY
+);
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -28,23 +34,23 @@ module.exports = async (req, res) => {
   try {
     const { name, properties } = req.body;
     
-    // Create event object
-    const event = {
-      type: 'custom',
-      eventName: name,
-      properties: properties || {},
-      userAgent: req.headers['user-agent'],
-      ipAddress: req.headers['x-forwarded-for'] || req.connection.remoteAddress,
-      sessionId: req.headers['x-session-id'] || null,
-      timestamp: new Date().toISOString()
-    };
+    // Insert into Supabase
+    const { error } = await supabase
+      .from('analytics_events')
+      .insert({
+        type: 'custom',
+        event_name: name,
+        properties: properties || {},
+        user_agent: req.headers['user-agent'],
+        ip_address: req.headers['x-forwarded-for'] || req.connection.remoteAddress,
+        session_id: req.headers['x-session-id'] || null,
+        timestamp: new Date().toISOString()
+      });
     
-    // Store in KV with unique key
-    const eventKey = `event:${Date.now()}:${Math.random().toString(36).substring(2)}`;
-    await kv.set(eventKey, event);
-    
-    // Increment counters
-    await kv.incr('stats:total_events');
+    if (error) {
+      console.error('Supabase error:', error);
+      return res.status(500).json({ error: 'Failed to track event' });
+    }
     
     res.json({ success: true });
   } catch (error) {

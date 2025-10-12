@@ -1,5 +1,11 @@
-const { kv } = require('@vercel/kv');
+const { createClient } = require('@supabase/supabase-js');
 const { rateLimit } = require('../utils/rateLimit');
+
+// Initialize Supabase client
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_ANON_KEY
+);
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -22,20 +28,58 @@ module.exports = async (req, res) => {
   }
 
   try {
-    // Get stats from KV
-    const totalPageViews = await kv.get('stats:total_pageviews') || 0;
-    const totalEvents = await kv.get('stats:total_events') || 0;
-    
+    // Get total page views
+    const { count: totalPageViews } = await supabase
+      .from('analytics_events')
+      .select('*', { count: 'exact', head: true })
+      .eq('type', 'pageview');
+
+    // Get total custom events
+    const { count: totalEvents } = await supabase
+      .from('analytics_events')
+      .select('*', { count: 'exact', head: true })
+      .eq('type', 'custom');
+
+    // Get today's page views
     const today = new Date().toISOString().split('T')[0];
-    const todayViews = await kv.get(`stats:daily:${today}`) || 0;
-    
-    // For now, return basic stats (top pages would require more complex KV queries)
+    const { count: todayViews } = await supabase
+      .from('analytics_events')
+      .select('*', { count: 'exact', head: true })
+      .eq('type', 'pageview')
+      .gte('timestamp', `${today}T00:00:00.000Z`)
+      .lt('timestamp', `${today}T23:59:59.999Z`);
+
+    // Get unique visitors (approximate by unique session IDs)
+    const { count: uniqueVisitors } = await supabase
+      .from('analytics_events')
+      .select('session_id', { count: 'exact', head: true })
+      .eq('type', 'pageview')
+      .not('session_id', 'is', null);
+
+    // Get top pages
+    const { data: topPagesData } = await supabase
+      .from('analytics_events')
+      .select('url')
+      .eq('type', 'pageview')
+      .not('url', 'is', null);
+
+    // Count page views by URL
+    const urlCounts = {};
+    topPagesData?.forEach(row => {
+      urlCounts[row.url] = (urlCounts[row.url] || 0) + 1;
+    });
+
+    const topPages = Object.entries(urlCounts)
+      .sort(([,a], [,b]) => b - a)
+      .slice(0, 10)
+      .map(([url, views]) => ({ url, views }));
+
     res.json({
-      totalPageViews: totalPageViews,
-      totalEvents: totalEvents,
-      todayViews: todayViews,
-      uniqueVisitors: Math.floor(totalPageViews * 0.7), // Rough estimate
-      topPages: [] // Would need more complex implementation
+      totalPageViews: totalPageViews || 0,
+      totalEvents: totalEvents || 0,
+      todayViews: todayViews || 0,
+      uniqueVisitors: Math.floor((uniqueVisitors || 0) * 0.7), // Rough estimate for unique sessions
+      topPages
     });
     
   } catch (error) {
