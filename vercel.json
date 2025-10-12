@@ -5,6 +5,32 @@
       "runtime": "@vercel/node@18"
     }
   },
+  "routes": [
+    {
+      "src": "/",
+      "dest": "/index.html"
+    },
+    {
+      "src": "/about",
+      "dest": "/about.html"
+    },
+    {
+      "src": "/projects",
+      "dest": "/projects.html"
+    },
+    {
+      "src": "/blog",
+      "dest": "/blog.html"
+    },
+    {
+      "src": "/contact",
+      "dest": "/contact.html"
+    },
+    {
+      "src": "/dashboard",
+      "dest": "/dashboard.html"
+    }
+  ],
   "headers": [
     {
       "source": "/api/(.*)",
@@ -20,6 +46,24 @@
         {
           "key": "Access-Control-Allow-Headers",
           "value": "Content-Type, X-Session-ID"
+        }
+      ]
+    },
+    {
+      "source": "/blog-posts/(.*\\.md)",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "text/plain; charset=utf-8"
+        }
+      ]
+    },
+    {
+      "source": "/blog-posts/posts.json",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/json; charset=utf-8"
         }
       ]
     }
