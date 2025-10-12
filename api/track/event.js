@@ -1,38 +1,5 @@
-const Database = require('better-sqlite3');
-const path = require('path');
-const fs = require('fs');
+const { kv } = require('@vercel/kv');
 const { rateLimit, validateRequest } = require('../utils/rateLimit');
-
-const DATABASE_PATH = '/tmp/analytics.db';
-
-function initDB() {
-  const dataDir = path.dirname(DATABASE_PATH);
-  if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir, { recursive: true });
-  }
-
-  const db = new Database(DATABASE_PATH);
-  
-  // Create table if not exists
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS events (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      type TEXT NOT NULL,
-      url TEXT,
-      title TEXT,
-      referrer TEXT,
-      event_name TEXT,
-      properties TEXT,
-      user_agent TEXT,
-      ip_address TEXT,
-      session_id TEXT,
-      timestamp TEXT NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
-  
-  return db;
-}
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -59,24 +26,25 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const db = initDB();
     const { name, properties } = req.body;
     
-    const stmt = db.prepare(`
-      INSERT INTO events (type, event_name, properties, user_agent, ip_address, session_id, timestamp)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `);
+    // Create event object
+    const event = {
+      type: 'custom',
+      eventName: name,
+      properties: properties || {},
+      userAgent: req.headers['user-agent'],
+      ipAddress: req.headers['x-forwarded-for'] || req.connection.remoteAddress,
+      sessionId: req.headers['x-session-id'] || null,
+      timestamp: new Date().toISOString()
+    };
     
-    stmt.run(
-      'custom',
-      name,
-      JSON.stringify(properties || {}),
-      req.headers['user-agent'],
-      req.headers['x-forwarded-for'] || req.connection.remoteAddress,
-      req.headers['x-session-id'] || null,
-      new Date().toISOString()
-    );
-    db.close();
+    // Store in KV with unique key
+    const eventKey = `event:${Date.now()}:${Math.random().toString(36).substring(2)}`;
+    await kv.set(eventKey, event);
+    
+    // Increment counters
+    await kv.incr('stats:total_events');
     
     res.json({ success: true });
   } catch (error) {

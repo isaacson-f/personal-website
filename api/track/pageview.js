@@ -1,39 +1,6 @@
-const Database = require('better-sqlite3');
-const path = require('path');
-const fs = require('fs');
+const { kv } = require('@vercel/kv');
 const { rateLimit, validateRequest } = require('../utils/rateLimit');
 const { addSecurityHeaders, sanitizeInput, isValidUrl } = require('../utils/security');
-
-const DATABASE_PATH = '/tmp/analytics.db';
-
-function initDB() {
-  const dataDir = path.dirname(DATABASE_PATH);
-  if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir, { recursive: true });
-  }
-
-  const db = new Database(DATABASE_PATH);
-  
-  // Create table if not exists
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS events (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      type TEXT NOT NULL,
-      url TEXT,
-      title TEXT,
-      referrer TEXT,
-      event_name TEXT,
-      properties TEXT,
-      user_agent TEXT,
-      ip_address TEXT,
-      session_id TEXT,
-      timestamp TEXT NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
-  
-  return db;
-}
 
 module.exports = async (req, res) => {
   addSecurityHeaders(res);
@@ -61,7 +28,6 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const db = initDB();
     const { url, title, referrer, userAgent } = req.body;
     
     // Validate and sanitize inputs
@@ -69,22 +35,26 @@ module.exports = async (req, res) => {
       return res.status(400).json({ error: 'Invalid URL' });
     }
     
-    const stmt = db.prepare(`
-      INSERT INTO events (type, url, title, referrer, user_agent, ip_address, session_id, timestamp)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `);
+    // Create event object
+    const event = {
+      type: 'pageview',
+      url: sanitizeInput(url),
+      title: sanitizeInput(title),
+      referrer: sanitizeInput(referrer),
+      userAgent: sanitizeInput(userAgent),
+      ipAddress: req.headers['x-forwarded-for'] || req.connection.remoteAddress,
+      sessionId: sanitizeInput(req.headers['x-session-id']) || null,
+      timestamp: new Date().toISOString()
+    };
     
-    stmt.run(
-      'pageview',
-      sanitizeInput(url),
-      sanitizeInput(title),
-      sanitizeInput(referrer),
-      sanitizeInput(userAgent),
-      req.headers['x-forwarded-for'] || req.connection.remoteAddress,
-      sanitizeInput(req.headers['x-session-id']) || null,
-      new Date().toISOString()
-    );
-    db.close();
+    // Store in KV with unique key
+    const eventKey = `event:${Date.now()}:${Math.random().toString(36).substring(2)}`;
+    await kv.set(eventKey, event);
+    
+    // Increment counters
+    await kv.incr('stats:total_pageviews');
+    const today = new Date().toISOString().split('T')[0];
+    await kv.incr(`stats:daily:${today}`);
     
     res.json({ success: true });
   } catch (error) {

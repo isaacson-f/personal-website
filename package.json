@@ -3,6 +3,6 @@
   "version": "1.0.0",
   "description": "Serverless analytics tracking",
   "dependencies": {
-    "better-sqlite3": "^9.2.2"
+    "@vercel/kv": "^1.0.1"
   }
 }
