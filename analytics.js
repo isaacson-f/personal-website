@@ -5,6 +5,9 @@
     ? 'http://localhost:3000' 
     : `${window.location.protocol}//${window.location.hostname}/api`;
   
+  // Check if analytics backend is available
+  const ANALYTICS_ENABLED = true; // KV is now configured!
+  
   // Generate simple session ID
   let sessionId = sessionStorage.getItem('analytics_session');
   if (!sessionId) {
@@ -21,14 +24,18 @@
       userAgent: navigator.userAgent
     };
 
-    fetch(`${ANALYTICS_URL}/track/pageview`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Session-ID': sessionId
-      },
-      body: JSON.stringify(data)
-    }).catch(err => console.warn('Analytics tracking failed:', err));
+    if (ANALYTICS_ENABLED) {
+      fetch(`${ANALYTICS_URL}/track/pageview`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Session-ID': sessionId
+        },
+        body: JSON.stringify(data)
+      }).catch(err => console.log('Analytics tracking failed:', err));
+    } else {
+      console.log('📊 Page view:', data.url);
+    }
   }
 
   // Track custom event
@@ -38,14 +45,18 @@
       properties
     };
 
-    fetch(`${ANALYTICS_URL}/track/event`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Session-ID': sessionId
-      },
-      body: JSON.stringify(data)
-    }).catch(err => console.warn('Analytics tracking failed:', err));
+    if (ANALYTICS_ENABLED) {
+      fetch(`${ANALYTICS_URL}/track/event`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Session-ID': sessionId
+        },
+        body: JSON.stringify(data)
+      }).catch(err => console.log('Analytics tracking failed:', err));
+    } else {
+      console.log('📊 Event:', name, properties);
+    }
   }
 
   // Auto-track page view when script loads
