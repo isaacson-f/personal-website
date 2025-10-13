@@ -2,7 +2,7 @@ const { createClient } = require('@supabase/supabase-js');
 
 // Initialize Supabase client
 const supabase = createClient(
-  process.env.STORAGE_POSTGRES_URL,
+  process.env.STORAGE_SUPABASE_URL,
   process.env.STORAGE_NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
 
@@ -20,17 +20,16 @@ module.exports = async (req, res) => {
   
   try {
     if (method === 'POST' && url.includes('/track/pageview')) {
-      const { url: pageUrl, title, referrer, userAgent } = req.body;
+      const { url: pageUrl, referrer, userAgent } = req.body;
       console.log(
         'Received pageview data:',
-        { url: pageUrl, title, referrer, userAgent }
+        { url: pageUrl, referrer, userAgent }
       )
       const { error } = await supabase
         .from('analytics_events')
         .insert({
           type: 'pageview',
           url: pageUrl,
-          title: title,
           referrer: referrer,
           user_agent: userAgent,
           ip_address: req.headers['x-forwarded-for'] || req.connection.remoteAddress,

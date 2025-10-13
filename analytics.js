@@ -14,10 +14,25 @@
 
   // Track page view
   function trackPageView() {
+    // Process referrer - if it's from the same site, just use the path
+    let referrer = document.referrer;
+    if (referrer) {
+      try {
+        const referrerUrl = new URL(referrer);
+        const currentUrl = new URL(window.location.href);
+        
+        // If same origin (protocol + hostname + port), just use pathname + search + hash
+        if (referrerUrl.origin === currentUrl.origin) {
+          referrer = referrerUrl.pathname + referrerUrl.search + referrerUrl.hash;
+        }
+      } catch (e) {
+        // Keep original referrer if URL parsing fails
+      }
+    }
+
     const data = {
       url: window.location.href,
-      title: document.title,
-      referrer: document.referrer,
+      referrer: referrer,
       userAgent: navigator.userAgent
     };
 

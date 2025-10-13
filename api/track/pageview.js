@@ -34,7 +34,7 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const { url, title, referrer, userAgent } = req.body;
+    const { url, referrer, userAgent } = req.body;
     
     // Validate and sanitize inputs
     if (!url || !isValidUrl(url)) {
@@ -47,7 +47,6 @@ module.exports = async (req, res) => {
       .insert({
         type: 'pageview',
         url: sanitizeInput(url),
-        title: sanitizeInput(title),
         referrer: sanitizeInput(referrer),
         user_agent: sanitizeInput(userAgent),
         ip_address: req.headers['x-forwarded-for'] || req.connection.remoteAddress,
