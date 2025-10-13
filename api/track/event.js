@@ -3,8 +3,8 @@ const { rateLimit, validateRequest } = require('../utils/rateLimit');
 
 // Initialize Supabase client
 const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY
+  process.env.STORAGE_SUPABASE_URL,
+  process.env.STORAGE_NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
 
 module.exports = async (req, res) => {
