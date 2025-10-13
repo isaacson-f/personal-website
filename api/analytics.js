@@ -1,50 +1,10 @@
-const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
-const fs = require('fs');
+const { createClient } = require('@supabase/supabase-js');
 
-// Use /tmp for serverless environment
-const DATABASE_PATH = '/tmp/analytics.db';
-
-let db;
-
-// Initialize database
-function initDB() {
-  if (!db) {
-    // Ensure directory exists
-    const dataDir = path.dirname(DATABASE_PATH);
-    if (!fs.existsSync(dataDir)) {
-      fs.mkdirSync(dataDir, { recursive: true });
-    }
-
-    db = new sqlite3.Database(DATABASE_PATH);
-    
-    // Create table if not exists
-    db.serialize(() => {
-      db.run(`
-        CREATE TABLE IF NOT EXISTS events (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          type TEXT NOT NULL,
-          url TEXT,
-          title TEXT,
-          referrer TEXT,
-          event_name TEXT,
-          properties TEXT,
-          user_agent TEXT,
-          ip_address TEXT,
-          session_id TEXT,
-          timestamp TEXT NOT NULL,
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-      `);
-      
-      // Create indexes
-      db.run(`CREATE INDEX IF NOT EXISTS idx_events_type ON events(type)`);
-      db.run(`CREATE INDEX IF NOT EXISTS idx_events_timestamp ON events(timestamp)`);
-      db.run(`CREATE INDEX IF NOT EXISTS idx_events_url ON events(url)`);
-    });
-  }
-  return db;
-}
+// Initialize Supabase client
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_ANON_KEY
+);
 
 module.exports = async (req, res) => {
   // Enable CORS
@@ -56,85 +16,92 @@ module.exports = async (req, res) => {
     return res.status(200).end();
   }
 
-  const db = initDB();
   const { method, url } = req;
   
   try {
     if (method === 'POST' && url.includes('/track/pageview')) {
       const { url: pageUrl, title, referrer, userAgent } = req.body;
       
-      const stmt = db.prepare(`
-        INSERT INTO events (type, url, title, referrer, user_agent, ip_address, session_id, timestamp)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      `);
+      const { error } = await supabase
+        .from('analytics_events')
+        .insert({
+          type: 'pageview',
+          url: pageUrl,
+          title: title,
+          referrer: referrer,
+          user_agent: userAgent,
+          ip_address: req.headers['x-forwarded-for'] || req.connection.remoteAddress,
+          session_id: req.headers['x-session-id'] || null,
+          timestamp: new Date().toISOString()
+        });
       
-      stmt.run(
-        'pageview',
-        pageUrl,
-        title,
-        referrer,
-        userAgent,
-        req.headers['x-forwarded-for'] || req.connection.remoteAddress,
-        req.headers['x-session-id'] || null,
-        new Date().toISOString()
-      );
+      if (error) {
+        console.error('Supabase error:', error);
+        return res.status(500).json({ error: 'Failed to track pageview' });
+      }
       
-      stmt.finalize();
       return res.json({ success: true });
       
     } else if (method === 'POST' && url.includes('/track/event')) {
       const { name, properties } = req.body;
       
-      const stmt = db.prepare(`
-        INSERT INTO events (type, event_name, properties, user_agent, ip_address, session_id, timestamp)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-      `);
+      const { error } = await supabase
+        .from('analytics_events')
+        .insert({
+          type: 'custom',
+          event_name: name,
+          properties: properties || {},
+          user_agent: req.headers['user-agent'],
+          ip_address: req.headers['x-forwarded-for'] || req.connection.remoteAddress,
+          session_id: req.headers['x-session-id'] || null,
+          timestamp: new Date().toISOString()
+        });
       
-      stmt.run(
-        'custom',
-        name,
-        JSON.stringify(properties || {}),
-        req.headers['user-agent'],
-        req.headers['x-forwarded-for'] || req.connection.remoteAddress,
-        req.headers['x-session-id'] || null,
-        new Date().toISOString()
-      );
+      if (error) {
+        console.error('Supabase error:', error);
+        return res.status(500).json({ error: 'Failed to track event' });
+      }
       
-      stmt.finalize();
       return res.json({ success: true });
       
     } else if (method === 'GET' && url.includes('/analytics/summary')) {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const todayISO = today.toISOString();
+      // Get total page views
+      const { count: totalViews } = await supabase
+        .from('analytics_events')
+        .select('*', { count: 'exact', head: true })
+        .eq('type', 'pageview');
+
+      // Get today's page views
+      const today = new Date().toISOString().split('T')[0];
+      const { count: todayViews } = await supabase
+        .from('analytics_events')
+        .select('*', { count: 'exact', head: true })
+        .eq('type', 'pageview')
+        .gte('timestamp', `${today}T00:00:00.000Z`)
+        .lt('timestamp', `${today}T23:59:59.999Z`);
+
+      // Get top pages
+      const { data: topPagesData } = await supabase
+        .from('analytics_events')
+        .select('url')
+        .eq('type', 'pageview')
+        .not('url', 'is', null);
+
+      // Count page views by URL
+      const urlCounts = {};
+      topPagesData?.forEach(row => {
+        urlCounts[row.url] = (urlCounts[row.url] || 0) + 1;
+      });
+
+      const topPages = Object.entries(urlCounts)
+        .sort(([,a], [,b]) => b - a)
+        .slice(0, 10)
+        .map(([url, views]) => ({ url, views }));
       
-      // Get analytics data
-      return new Promise((resolve) => {
-        db.get("SELECT COUNT(*) as count FROM events WHERE type = 'pageview'", (err, totalResult) => {
-          if (err) throw err;
-          
-          db.get("SELECT COUNT(*) as count FROM events WHERE type = 'pageview' AND timestamp >= ?", [todayISO], (err, todayResult) => {
-            if (err) throw err;
-            
-            db.all(`
-              SELECT url, COUNT(*) as views 
-              FROM events 
-              WHERE type = 'pageview' AND url IS NOT NULL
-              GROUP BY url 
-              ORDER BY views DESC 
-              LIMIT 10
-            `, (err, topPages) => {
-              if (err) throw err;
-              
-              res.json({
-                totalViews: totalResult.count,
-                todayViews: todayResult.count,
-                topPages: topPages.map(p => ({ url: p.url, views: p.views }))
-              });
-              resolve();
-            });
-          });
-        });
+      return res.json({
+        totalViews: totalViews || 0,
+        todayViews: todayViews || 0,
+        topPages
       });
       
     } else {
